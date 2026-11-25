@@ -1,39 +1,77 @@
-# FinanC+
+# 💰 FinanC+ — Controle Financeiro Pessoal
 
-Aplicação web de **controle financeiro pessoal**. Permite organizar contas, categorias e transações, acompanhar o saldo e entender para onde o dinheiro está indo, tudo em um dashboard simples e responsivo.
+O **FinanC+** é um sistema de controle financeiro pessoal desenvolvido como projeto Full Stack, com o objetivo de facilitar o gerenciamento de contas e oferecer uma visão organizada da vida financeira do usuário.
 
-Projeto desenvolvido como parte do meu portfólio Full Stack.
+O projeto também tem como propósito aprofundar conhecimentos em desenvolvimento Web, arquitetura de APIs, autenticação, bancos de dados e boas práticas de programação.
 
-## Funcionalidades
+## 🚀 Tecnologias utilizadas
 
-- **Login seguro**, com dados separados por usuário
-- **Contas**: conta corrente, poupança, dinheiro, cartão e investimentos, com saldo sempre atualizado
-- **Categorias** de receitas e despesas
-- **Transações** com filtros por período, conta, categoria e tipo
-- **Exportação para CSV**, pronta para abrir no Excel
-- **Dashboard** com resumo do mês, gastos por categoria e evolução dos últimos 6 meses
-- **Metas** com barra de progresso e destaque ao serem atingidas
-- **Lançamentos recorrentes**, como aluguel e assinaturas, criados automaticamente
-- **Layout responsivo**, com menu inferior no celular
+### Frontend
 
-## Tecnologias
+- React
+- TypeScript
+- Vite
+- Tailwind CSS
 
-- **Frontend:** React, TypeScript, Vite, Tailwind CSS e Recharts
-- **Backend:** Node.js, Express, TypeScript, Prisma e Zod
-- **Banco de dados e autenticação:** Supabase (PostgreSQL)
-- **Testes:** Vitest
+### Backend
 
-## Estrutura do projeto
+- Node.js
+- Express
+- TypeScript
+- Prisma ORM (v6)
+- Zod
 
-```
-financ-plus/
-├── api/   # API REST
-└── web/   # Aplicação React
-```
+### Banco de dados e autenticação
 
-## Como executar
+- Supabase
+- PostgreSQL
+- Supabase Auth
 
-1. Crie um projeto no [Supabase](https://supabase.com) e preencha os arquivos `.env` de cada pasta, seguindo os modelos `.env.example`.
-2. Na pasta `api`, rode `npm install` e `npm run dev`.
-3. Na pasta `web`, rode `npm install` e `npm run dev`.
-4. Acesse `http://localhost:5173`.
+## 🏗️ Arquitetura
+
+O projeto utiliza uma arquitetura separada entre frontend e backend:
+
+- **Frontend:** responsável pela interface e interação com o usuário.
+- **Backend:** API REST desenvolvida com Node.js e Express.
+- **Prisma:** gerenciamento da comunicação entre a API e o banco de dados.
+- **Supabase:** armazenamento dos dados e gerenciamento da autenticação.
+
+A autenticação utiliza o Supabase Auth, enquanto o backend realiza a validação dos tokens recebidos por meio de middleware próprio.
+
+## ⚙️ Funcionalidades
+
+- Autenticação e gerenciamento de usuários.
+- Gerenciamento de contas financeiras (CRUD).
+- Cálculo automático do saldo das contas.
+- Validação de dados utilizando Zod.
+- Integração com banco de dados PostgreSQL.
+- API REST com rotas para gerenciamento dos recursos.
+
+## 🔮 Funcionalidades futuras
+
+- Controle de compras parceladas.
+- Alertas e notificações.
+- Tema escuro (Dark Mode).
+- Documentação da API com Swagger.
+
+## 🗄️ Banco de dados
+
+O banco de dados utiliza PostgreSQL hospedado no Supabase, com gerenciamento de entidades através do Prisma ORM.
+
+Tabelas principais:
+
+- `accounts`
+- `categories`
+- `transactions`
+- `goals`
+- `recurring_transactions`
+
+O saldo das contas é calculado dinamicamente durante a consulta, considerando as movimentações financeiras.
+
+## 🔐 Segurança
+
+- Autenticação gerenciada pelo Supabase Auth.
+- Validação de tokens no backend.
+- Validação de entradas utilizando Zod.
+- Variáveis sensíveis armazenadas em arquivos de ambiente.
+- Credenciais e chaves de acesso não devem ser versionadas no Git.
