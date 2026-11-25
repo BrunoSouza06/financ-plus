@@ -26,3 +26,12 @@ export function monthLabel(month: string) {
     timeZone: "UTC",
   });
 }
+
+export function maskDate(v: string) {
+  const d = v.replace(/\D/g, "").slice(0, 8);
+  if (d.length > 4) return `${d.slice(0, 2)}/${d.slice(2, 4)}/${d.slice(4)}`;
+  if (d.length > 2) return `${d.slice(0, 2)}/${d.slice(2)}`;
+  return d;
+}
+
+export const toIso = (br: string) => br.split("/").reverse().join("-");

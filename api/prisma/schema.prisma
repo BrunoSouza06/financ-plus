@@ -28,6 +28,7 @@ model Account {
   type           AccountType
   initialBalance Decimal     @default(0) @map("initial_balance") @db.Decimal(14, 2)
   createdAt      DateTime    @default(now()) @map("created_at")
+  recurring RecurringTransaction[]
 
   transactions Transaction[]
 
@@ -42,6 +43,7 @@ model Category {
   type      TransactionType
   color     String?
   createdAt DateTime        @default(now()) @map("created_at")
+  recurring RecurringTransaction[]
 
   transactions Transaction[]
 
@@ -65,4 +67,37 @@ model Transaction {
 
   @@index([userId, date])
   @@map("transactions")
+}
+
+model Goal {
+  id           String    @id @default(uuid()) @db.Uuid
+  userId       String    @map("user_id") @db.Uuid
+  name         String
+  targetAmount Decimal   @map("target_amount") @db.Decimal(14, 2)
+  savedAmount  Decimal   @default(0) @map("saved_amount") @db.Decimal(14, 2)
+  deadline     DateTime? @db.Date
+  createdAt    DateTime  @default(now()) @map("created_at")
+
+  @@index([userId])
+  @@map("goals")
+}
+model RecurringTransaction {
+  id            String          @id @default(uuid()) @db.Uuid
+  userId        String          @map("user_id") @db.Uuid
+  description   String
+  amount        Decimal         @db.Decimal(14, 2)
+  type          TransactionType
+  dayOfMonth    Int             @map("day_of_month")
+  accountId     String          @map("account_id") @db.Uuid
+  categoryId    String          @map("category_id") @db.Uuid
+  startMonth    String          @map("start_month")
+  lastGenerated String?         @map("last_generated")
+  active        Boolean         @default(true)
+  createdAt     DateTime        @default(now()) @map("created_at")
+
+  account  Account  @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  category Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("recurring_transactions")
 }

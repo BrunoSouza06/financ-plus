@@ -6,6 +6,8 @@ import accountsRouter from "./routes/accounts";
 import categoriesRouter from "./routes/categories";
 import transactionsRouter from "./routes/transactions";
 import dashboardRouter from "./routes/dashboard";
+import goalsRouter from "./routes/goals";
+import recurringRouter from "./routes/recurring";
 
 const app = express();
 
@@ -26,6 +28,8 @@ app.use("/accounts", requireAuth, accountsRouter);
 app.use("/categories", requireAuth, categoriesRouter);
 app.use("/transactions", requireAuth, transactionsRouter);
 app.use("/dashboard", requireAuth, dashboardRouter);
+app.use("/goals", requireAuth, goalsRouter);
+app.use("/recurring", requireAuth, recurringRouter);
 
 app.listen(port, () => {
   console.log(`API rodando em http://localhost:${port}`);

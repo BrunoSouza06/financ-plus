@@ -1,13 +1,24 @@
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { api } from "../lib/api";
 import { inputClass, typeColor } from "../lib/format";
+import { useConfirm } from "../components/ConfirmDialog";
 
 type TxType = "INCOME" | "EXPENSE";
-type Category = { id: string; name: string; type: TxType; color: string | null };
+type Category = {
+  id: string;
+  name: string;
+  type: TxType;
+  color: string | null;
+};
 
-const typeLabels: Record<TxType, string> = { EXPENSE: "Despesas", INCOME: "Receitas" };
+const typeLabels: Record<TxType, string> = {
+  EXPENSE: "Despesas",
+  INCOME: "Receitas",
+};
 
 export default function Categories() {
+  const askConfirm = useConfirm();
+
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -58,7 +69,13 @@ export default function Categories() {
   }
 
   async function handleDelete(id: string) {
-    if (!confirm("Excluir esta categoria?")) return;
+    const ok = await askConfirm({
+      title: "Excluir categoria",
+      message: "Tem certeza que deseja excluir esta categoria?",
+      confirmLabel: "Excluir",
+      danger: true,
+    });
+    if (!ok) return;
     setError("");
 
     try {

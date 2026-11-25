@@ -1,7 +1,13 @@
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { api } from "../lib/api";
+import { useConfirm } from "../components/ConfirmDialog";
 
-type AccountType = "CHECKING" | "SAVINGS" | "CASH" | "CREDIT_CARD" | "INVESTMENT";
+type AccountType =
+  | "CHECKING"
+  | "SAVINGS"
+  | "CASH"
+  | "CREDIT_CARD"
+  | "INVESTMENT";
 
 type Account = {
   id: string;
@@ -26,6 +32,8 @@ const inputClass =
   "rounded-lg bg-slate-700 px-3 py-2 text-white outline-none focus:ring-2 focus:ring-emerald-500";
 
 export default function Accounts() {
+  const askConfirm = useConfirm();
+
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -80,7 +88,13 @@ export default function Accounts() {
   }
 
   async function handleDelete(id: string) {
-    if (!confirm("Excluir esta conta?")) return;
+    const ok = await askConfirm({
+      title: "Excluir conta",
+      message: "Tem certeza que deseja excluir esta conta?",
+      confirmLabel: "Excluir",
+      danger: true,
+    });
+    if (!ok) return;
     setError("");
 
     try {
@@ -157,7 +171,9 @@ export default function Accounts() {
                 <p className="text-sm text-slate-400">{typeLabels[a.type]}</p>
               </div>
               <div className="flex items-center gap-4">
-                <span className="font-semibold text-emerald-400">{brl(a.balance)}</span>
+                <span className="font-semibold text-emerald-400">
+                  {brl(a.balance)}
+                </span>
                 <button
                   onClick={() => startEdit(a)}
                   className="text-sm text-slate-300 hover:text-white"

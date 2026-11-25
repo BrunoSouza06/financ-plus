@@ -1,6 +1,24 @@
-import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type FormEvent,
+} from "react";
 import { api } from "../lib/api";
-import { brl, fmtDate, inputClass, monthLabel, shiftMonth, today, typeColor } from "../lib/format";
+import {
+  brl,
+  fmtDate,
+  inputClass,
+  monthLabel,
+  shiftMonth,
+  today,
+  typeColor,
+  maskDate,
+  toIso,
+} from "../lib/format";
+import { useConfirm } from "../components/ConfirmDialog";
+import { downloadCsv, safeText } from "../lib/csv";
 
 type TxType = "INCOME" | "EXPENSE";
 
@@ -28,19 +46,14 @@ type Transaction = {
 function monthBounds(month: string) {
   const [y, m] = month.split("-").map(Number);
   const last = new Date(Date.UTC(y, m, 0)).getUTCDate();
-  return { from: `${month}-01`, to: `${month}-${String(last).padStart(2, "0")}` };
+  return {
+    from: `${month}-01`,
+    to: `${month}-${String(last).padStart(2, "0")}`,
+  };
 }
-
-function maskDate(v: string) {
-  const d = v.replace(/\D/g, "").slice(0, 8);
-  if (d.length > 4) return `${d.slice(0, 2)}/${d.slice(2, 4)}/${d.slice(4)}`;
-  if (d.length > 2) return `${d.slice(0, 2)}/${d.slice(2)}`;
-  return d;
-}
-
-const toIso = (br: string) => br.split("/").reverse().join("-");
 
 export default function Transactions() {
+  const askConfirm = useConfirm();
   // Controle para ignorar respostas de requisições antigas
   const requestId = useRef(0);
 
@@ -60,15 +73,25 @@ export default function Transactions() {
   const [accountId, setAccountId] = useState("");
   const [categoryId, setCategoryId] = useState("");
 
+  const [filterAccount, setFilterAccount] = useState("");
+  const [filterType, setFilterType] = useState("");
+  const [filterCategory, setFilterCategory] = useState("");
+
+  const [exporting, setExporting] = useState(false);
+
   const load = useCallback(async () => {
     const id = ++requestId.current;
-
     try {
       const { from, to } = monthBounds(month);
+      const params = new URLSearchParams({ from, to, limit: "100" });
+      if (filterAccount) params.set("accountId", filterAccount);
+      if (filterCategory) params.set("categoryId", filterCategory);
+      if (filterType) params.set("type", filterType);
+
       const [acc, cat, list] = await Promise.all([
         api<Account[]>("/accounts"),
         api<Category[]>("/categories"),
-        api<{ items: Transaction[] }>(`/transactions?from=${from}&to=${to}&limit=100`),
+        api<{ items: Transaction[] }>(`/transactions?${params}`),
       ]);
 
       if (id !== requestId.current) return;
@@ -82,7 +105,7 @@ export default function Transactions() {
     } finally {
       if (id === requestId.current) setLoading(false);
     }
-  }, [month]);
+  }, [month, filterAccount, filterType, filterCategory]);
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -94,12 +117,69 @@ export default function Transactions() {
     setMonth(shiftMonth(month, delta));
   }
 
+  function changeFilter(setter: (v: string) => void, value: string) {
+    setLoading(true);
+    setter(value);
+  }
+
+  function clearFilters() {
+    setLoading(true);
+    setFilterAccount("");
+    setFilterType("");
+    setFilterCategory("");
+  }
+
+  async function exportCsv() {
+    setExporting(true);
+    setError("");
+
+    try {
+      const { from, to } = monthBounds(month);
+      const all: Transaction[] = [];
+
+      for (let page = 1; ; page++) {
+        const params = new URLSearchParams({
+          from,
+          to,
+          limit: "100",
+          page: String(page),
+        });
+        if (filterAccount) params.set("accountId", filterAccount);
+        if (filterCategory) params.set("categoryId", filterCategory);
+        if (filterType) params.set("type", filterType);
+
+        const res = await api<{ items: Transaction[]; total: number }>(
+          `/transactions?${params}`,
+        );
+        all.push(...res.items);
+        if (res.items.length === 0 || all.length >= res.total) break;
+      }
+
+      downloadCsv(`transacoes-${month}.csv`, [
+        ["Data", "Descrição", "Tipo", "Categoria", "Conta", "Valor"],
+        ...all.map((t) => [
+          fmtDate(t.date),
+          safeText(t.description),
+          t.type === "INCOME" ? "Receita" : "Despesa",
+          safeText(t.category.name),
+          safeText(t.account.name),
+          (t.type === "INCOME" ? "" : "-") +
+            t.amount.toFixed(2).replace(".", ","),
+        ]),
+      ]);
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setExporting(false);
+    }
+  }
+
   // Valores efetivos: se nada foi escolhido, usa a primeira opção válida
   const categoryOptions = categories.filter((c) => c.type === type);
   const selectedAccount = accountId || accounts[0]?.id || "";
   const selectedCategory = categoryOptions.some((c) => c.id === categoryId)
     ? categoryId
-    : categoryOptions[0]?.id ?? "";
+    : (categoryOptions[0]?.id ?? "");
 
   const income = items
     .filter((i) => i.type === "INCOME")
@@ -108,7 +188,8 @@ export default function Transactions() {
     .filter((i) => i.type === "EXPENSE")
     .reduce((s, i) => s + i.amount, 0);
 
-  const missingBase = !loading && (accounts.length === 0 || categoryOptions.length === 0);
+  const missingBase =
+    !loading && (accounts.length === 0 || categoryOptions.length === 0);
 
   function resetForm() {
     setEditingId(null);
@@ -160,7 +241,13 @@ export default function Transactions() {
   }
 
   async function handleDelete(id: string) {
-    if (!confirm("Excluir esta transação?")) return;
+    const ok = await askConfirm({
+      title: "Excluir transação",
+      message: "Tem certeza que deseja excluir esta transação?",
+      confirmLabel: "Excluir",
+      danger: true,
+    });
+    if (!ok) return;
     setError("");
 
     try {
@@ -197,7 +284,10 @@ export default function Transactions() {
         </div>
       </div>
 
-      <form onSubmit={handleSubmit} className="grid grid-cols-2 md:grid-cols-6 gap-2 mb-4">
+      <form
+        onSubmit={handleSubmit}
+        className="grid grid-cols-2 md:grid-cols-6 gap-2 mb-4"
+      >
         <input
           className={`${inputClass} col-span-2 md:col-span-3`}
           placeholder="Descrição"
@@ -274,15 +364,80 @@ export default function Transactions() {
 
       {missingBase && (
         <p className="text-sm text-amber-400 mb-3">
-          Cadastre ao menos uma conta e uma categoria do tipo escolhido para lançar transações.
+          Cadastre ao menos uma conta e uma categoria do tipo escolhido para
+          lançar transações.
         </p>
       )}
       {error && <p className="text-sm text-red-400 mb-3">{error}</p>}
 
+      <div className="flex flex-wrap gap-2 mb-4">
+        <select
+          className={inputClass}
+          value={filterAccount}
+          onChange={(e) => changeFilter(setFilterAccount, e.target.value)}
+        >
+          <option value="">Todas as contas</option>
+          {accounts.map((a) => (
+            <option key={a.id} value={a.id}>
+              {a.name}
+            </option>
+          ))}
+        </select>
+
+        <select
+          className={inputClass}
+          value={filterType}
+          onChange={(e) => {
+            setFilterCategory("");
+            changeFilter(setFilterType, e.target.value);
+          }}
+        >
+          <option value="">Receitas e despesas</option>
+          <option value="EXPENSE">Despesas</option>
+          <option value="INCOME">Receitas</option>
+        </select>
+
+        <select
+          className={inputClass}
+          value={filterCategory}
+          onChange={(e) => changeFilter(setFilterCategory, e.target.value)}
+        >
+          <option value="">Todas as categorias</option>
+          {categories
+            .filter((c) => !filterType || c.type === filterType)
+            .map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.name}
+              </option>
+            ))}
+        </select>
+
+        {(filterAccount || filterType || filterCategory) && (
+          <button
+            type="button"
+            onClick={clearFilters}
+            className="rounded-lg bg-slate-700 px-4 py-2 hover:bg-slate-600"
+          >
+            Limpar filtros
+          </button>
+        )}
+
+        <button
+          type="button"
+          onClick={exportCsv}
+          disabled={exporting}
+          className="ml-auto rounded-lg bg-slate-700 px-4 py-2 hover:bg-slate-600 disabled:opacity-50"
+        >
+          {exporting ? "Exportando..." : "Exportar CSV"}
+        </button>
+      </div>
+
       <div className={`flex gap-6 mb-4 text-sm ${loading ? "opacity-40" : ""}`}>
         <span className="text-emerald-400">Receitas: {brl(income)}</span>
         <span className="text-red-400">Despesas: {brl(expense)}</span>
-        <span className="text-slate-300">Resultado: {brl(income - expense)}</span>
+        <span className="text-slate-300">
+          Resultado: {brl(income - expense)}
+        </span>
       </div>
 
       {loading ? (
@@ -292,7 +447,7 @@ export default function Transactions() {
           ))}
         </ul>
       ) : items.length === 0 ? (
-        <p className="text-slate-400">Nenhuma transação neste mês.</p>
+        <p className="text-slate-400">Nenhuma transação encontrada.</p>
       ) : (
         <ul className="space-y-2">
           {items.map((t) => (
@@ -301,7 +456,9 @@ export default function Transactions() {
               className="flex items-center justify-between rounded-xl bg-slate-800 p-3"
             >
               <div className="flex items-center gap-3">
-                <span className="text-sm text-slate-400 w-20">{fmtDate(t.date)}</span>
+                <span className="text-sm text-slate-400 w-20">
+                  {fmtDate(t.date)}
+                </span>
                 <div>
                   <p className="font-medium">{t.description}</p>
                   <p className="text-xs text-slate-400 flex items-center gap-2">

@@ -2,15 +2,14 @@ import { Router } from "express";
 import { z } from "zod";
 import { Prisma } from "@prisma/client";
 import { prisma } from "../lib/prisma";
+import { isRealDate, toDate } from "../lib/dates";
 
 const router = Router();
-
-const toDate = (d: string) => new Date(`${d}T00:00:00.000Z`);
 
 const dateString = z
   .string()
   .regex(/^\d{4}-\d{2}-\d{2}$/, "Data deve estar no formato AAAA-MM-DD")
-  .refine((d) => !isNaN(toDate(d).getTime()), "Data inválida");
+  .refine(isRealDate, "Data inválida");
 
 const transactionSchema = z.object({
   description: z.string().trim().min(1, "Descrição obrigatória").max(100),
@@ -39,7 +38,7 @@ const serialize = <T extends { amount: Prisma.Decimal }>(t: T) => ({
 // Confere se conta e categoria são do usuário e se o tipo bate
 async function validateRefs(
   userId: string,
-  data: z.infer<typeof transactionSchema>
+  data: z.infer<typeof transactionSchema>,
 ) {
   const [account, category] = await Promise.all([
     prisma.account.findFirst({ where: { id: data.accountId, userId } }),
@@ -125,7 +124,9 @@ router.put("/:id", async (req, res) => {
   }
 
   const userId = req.userId!;
-  const existing = await prisma.transaction.findFirst({ where: { id, userId } });
+  const existing = await prisma.transaction.findFirst({
+    where: { id, userId },
+  });
   if (!existing) {
     res.status(404).json({ error: "Transação não encontrada" });
     return;

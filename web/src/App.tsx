@@ -8,23 +8,30 @@ import Accounts from "./pages/Accounts";
 import Categories from "./pages/Categories";
 import Transactions from "./pages/Transactions";
 import NotFound from "./pages/NotFound";
+import Goals from "./pages/Goals";
+import { ConfirmProvider } from "./components/ConfirmDialog";
+import Recurring from "./pages/Recurring";
 
 export default function App() {
   return (
     <BrowserRouter>
       <AuthProvider>
-        <Routes>
-          <Route path="/login" element={<Login />} />
-          <Route element={<ProtectedRoute />}>
-            <Route element={<Layout />}>
-              <Route path="/" element={<Dashboard />} />
-              <Route path="/contas" element={<Accounts />} />
-              <Route path="/categorias" element={<Categories />} />
-              <Route path="/transacoes" element={<Transactions />} />
-              <Route path="*" element={<NotFound />} />          
+        <ConfirmProvider>
+          <Routes>
+            <Route path="/login" element={<Login />} />
+            <Route element={<ProtectedRoute />}>
+              <Route element={<Layout />}>
+                <Route path="/" element={<Dashboard />} />
+                <Route path="/contas" element={<Accounts />} />
+                <Route path="/categorias" element={<Categories />} />
+                <Route path="/transacoes" element={<Transactions />} />
+                <Route path="*" element={<NotFound />} />
+                <Route path="/metas" element={<Goals />} />
+                <Route path="/recorrentes" element={<Recurring />} />
+              </Route>
             </Route>
-          </Route>
-        </Routes>
+          </Routes>
+        </ConfirmProvider>
       </AuthProvider>
     </BrowserRouter>
   );

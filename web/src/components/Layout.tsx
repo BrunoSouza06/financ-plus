@@ -1,16 +1,28 @@
 import { NavLink, Outlet } from "react-router-dom";
 import { supabase } from "../lib/supabase";
 import { useAuth } from "../contexts/AuthContext";
+import { useEffect, useState } from "react";
+import { api } from "../lib/api";
 
 const links = [
   { to: "/", label: "Dashboard" },
   { to: "/contas", label: "Contas" },
   { to: "/categorias", label: "Categorias" },
   { to: "/transacoes", label: "Transações" },
+  { to: "/metas", label: "Metas" },
+  { to: "/recorrentes", label: "Recorrentes" },
 ];
 
 export default function Layout() {
   const { session } = useAuth();
+
+  const [ready, setReady] = useState(false);
+
+  useEffect(() => {
+    api("/recurring/run", "POST")
+      .catch(() => {})
+      .finally(() => setReady(true));
+  }, []);
 
   return (
     <div className="min-h-screen flex bg-slate-900 text-white">
@@ -37,7 +49,9 @@ export default function Layout() {
           ))}
         </nav>
 
-        <p className="text-xs text-slate-400 truncate mb-2">{session?.user.email}</p>
+        <p className="text-xs text-slate-400 truncate mb-2">
+          {session?.user.email}
+        </p>
         <button
           onClick={() => supabase.auth.signOut()}
           className="rounded-lg bg-slate-700 px-3 py-2 hover:bg-slate-600"
@@ -59,7 +73,7 @@ export default function Layout() {
         </header>
 
         <main className="flex-1 p-4 pb-24 md:p-6">
-          <Outlet />
+          {ready ? <Outlet /> : <p className="text-slate-400">Carregando...</p>}
         </main>
       </div>
 
